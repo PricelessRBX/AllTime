@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Donation Leaderboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #8b5cf6; --accent2: #c084fc; --bg: #07040f; --card: rgba(22, 14, 40, .72);
+    --line: rgba(167, 139, 250, .18); --text: #f5f0ff; --muted: rgba(226, 214, 255, .62);
+    --robux: #a78bfa;
+    --gold: linear-gradient(90deg, #f7c948, #e8a91c); --silver: linear-gradient(90deg, #d5dae3, #aab2c0);
+    --bronze: linear-gradient(90deg, #d98a4a, #b86a2e); --blue: linear-gradient(90deg, #3b82f6, #2563eb);
+    --pink: linear-gradient(90deg, #ff5fb0, #e0368f);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+
+  /* ---------- Background: aurora blobs + grid + glow ---------- */
+  .bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; background:
+      radial-gradient(1200px 700px at 50% -10%, rgba(124, 58, 237, .35), transparent 60%),
+      radial-gradient(900px 600px at 100% 100%, rgba(192, 38, 211, .18), transparent 60%),
+      var(--bg); }
+  .blob { position: absolute; border-radius: 50%; filter: blur(90px); opacity: .55; will-change: transform; }
+  .b1 { width: 520px; height: 520px; background: #7c3aed; top: -140px; left: -120px; animation: drift1 22s ease-in-out infinite alternate; }
+  .b2 { width: 460px; height: 460px; background: #c026d3; bottom: -160px; right: -100px; animation: drift2 26s ease-in-out infinite alternate; opacity: .4; }
+  .b3 { width: 380px; height: 380px; background: #4f46e5; top: 40%; left: 55%; animation: drift3 30s ease-in-out infinite alternate; opacity: .35; }
+  @keyframes drift1 { to { transform: translate(180px, 140px) scale(1.15); } }
+  @keyframes drift2 { to { transform: translate(-200px, -120px) scale(1.1); } }
+  @keyframes drift3 { to { transform: translate(-220px, 160px) scale(.9); } }
+  .grid { position: absolute; inset: 0; background-image:
+      linear-gradient(rgba(167, 139, 250, .07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(167, 139, 250, .07) 1px, transparent 1px);
+    background-size: 44px 44px;
+    -webkit-mask-image: radial-gradient(ellipse at 50% 30%, #000 0%, transparent 72%);
+    mask-image: radial-gradient(ellipse at 50% 30%, #000 0%, transparent 72%); }
+  canvas#stars { position: absolute; inset: 0; width: 100%; height: 100%; }
+  @media (prefers-reduced-motion: reduce) { .blob { animation: none; } }
+
+  /* ---------- Layout ---------- */
+  .page { max-width: 640px; margin: 0 auto; padding: 28px 16px 90px; position: relative; }
+  h1 { font-size: 30px; font-weight: 800; margin: 0; letter-spacing: -0.02em;
+       background: linear-gradient(90deg, #fff, #d8c4ff 55%, #b784ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sub { color: var(--muted); font-size: 14px; margin-top: 6px; }
+
+  .switch { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 5px; margin-top: 20px; backdrop-filter: blur(10px); }
+  .switch button { border: 0; border-radius: 10px; padding: 11px 0; font-weight: 700; font-size: 15px; font-family: inherit; color: var(--muted); background: none; cursor: pointer; transition: background .2s, color .2s; }
+  .switch button.on { background: linear-gradient(135deg, #7c3aed, #a855f7); color: #fff; box-shadow: 0 0 22px rgba(139, 92, 246, .55); }
+
+  .periods { display: flex; gap: 6px; margin-top: 12px; overflow-x: auto; scrollbar-width: none; }
+  .periods::-webkit-scrollbar { display: none; }
+  .periods button { flex: 1 0 auto; border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; font-weight: 600; font-size: 14px; font-family: inherit; color: var(--muted); background: var(--card); cursor: pointer; white-space: nowrap; backdrop-filter: blur(10px); transition: border-color .2s, color .2s; }
+  .periods button:hover { color: var(--text); }
+  .periods button.on { color: var(--text); border-color: var(--accent2); box-shadow: 0 0 14px rgba(192, 132, 252, .35); }
+
+  .raised { margin-top: 18px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; position: relative; overflow: hidden; backdrop-filter: blur(10px); }
+  .raised::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, #7c3aed, #c084fc, #e879f9); }
+  .raised .label { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  .raised .big { font-size: 36px; font-weight: 800; letter-spacing: -0.02em; margin-top: 4px; font-variant-numeric: tabular-nums; text-shadow: 0 0 26px rgba(168, 85, 247, .55); }
+
+  .search { width: 100%; margin-top: 14px; padding: 11px 14px; font-weight: 500; font-size: 15px; font-family: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 12px; backdrop-filter: blur(10px); }
+  .search::placeholder { color: var(--muted); }
+  .search:focus { outline: 2px solid var(--accent2); border-color: transparent; }
+
+  .list { margin-top: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; backdrop-filter: blur(10px); }
+  .row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--line); font-size: 15px; font-weight: 600; }
+  .row:first-child { border-top: 0; }
+  .rank { width: 30px; flex: none; text-align: center; color: var(--muted); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .medal { width: 26px; height: 26px; margin: 0 2px; border-radius: 50%; display: grid; place-items: center; background: rgba(0, 0, 0, .22); font-size: 13px; font-weight: 800; }
+  .row.top { padding: 15px 16px; font-size: 17px; }
+  .av { width: 32px; height: 32px; border-radius: 50%; flex: none; background: rgba(255, 255, 255, .1); object-fit: cover; }
+  .av.letter { display: grid; place-items: center; font-size: 14px; font-weight: 800; color: var(--muted); }
+  .row.top .av { width: 38px; height: 38px; }
+  .name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .name.deleted { color: var(--muted); font-style: italic; }
+  .amt { font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .amt.robux { color: var(--robux); }
+
+  /* ---------- Rank colors: whole bar ---------- */
+  .row.r1 { background: var(--gold); color: #3a2800; }
+  .row.r2 { background: var(--silver); color: #232a36; }
+  .row.r3 { background: var(--bronze); color: #fff; }
+  .row.r4 { background: var(--blue); color: #fff; }
+  .row.r5 { background: var(--pink); color: #fff; }
+  .row.r1, .row.r2, .row.r3, .row.r4, .row.r5 { border-top-color: rgba(0, 0, 0, .12); }
+  .row.r1 .amt, .row.r2 .amt, .row.r3 .amt, .row.r4 .amt, .row.r5 .amt { color: inherit; }
+  .row.r1 .rank, .row.r2 .rank, .row.r3 .rank, .row.r4 .rank, .row.r5 .rank { color: inherit; opacity: .85; }
+  .row.r1 .av.letter, .row.r2 .av.letter, .row.r3 .av.letter, .row.r4 .av.letter, .row.r5 .av.letter { background: rgba(0, 0, 0, .18); color: inherit; }
+  .row.r1 .medal { color: #3a2800; } .row.r2 .medal { color: #232a36; }
+  .row.r3 .medal { color: #fff; }
+
+  .empty { padding: 28px 16px; text-align: center; color: var(--muted); font-weight: 600; }
+  .foot { color: var(--muted); font-size: 12px; text-align: center; margin-top: 18px; }
+
+  /* ---------- Music control ---------- */
+  .music { position: fixed; right: 16px; bottom: 16px; display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 8px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 999px; backdrop-filter: blur(12px); box-shadow: 0 8px 30px rgba(0, 0, 0, .45), 0 0 24px rgba(139, 92, 246, .25); z-index: 10; }
+  .music[hidden] { display: none; }
+  .music button { width: 36px; height: 36px; border: 0; border-radius: 50%; background: linear-gradient(135deg, #7c3aed, #c084fc); color: #fff; cursor: pointer; display: grid; place-items: center; }
+  .music svg { width: 18px; height: 18px; fill: currentColor; }
+  .music input { width: 84px; accent-color: #c084fc; cursor: pointer; }
+  .bars { display: flex; gap: 2px; align-items: flex-end; height: 16px; }
+  .bars i { width: 3px; background: var(--accent2); border-radius: 2px; height: 4px; }
+  .music.playing .bars i { animation: eq 0.9s ease-in-out infinite; }
+  .music.playing .bars i:nth-child(2) { animation-delay: .2s; } .music.playing .bars i:nth-child(3) { animation-delay: .4s; }
+  @keyframes eq { 0%, 100% { height: 4px; } 50% { height: 16px; } }
+  @media (max-width: 420px) { .music input { width: 60px; } }
+</style>
+</head>
+<body>
+<div class="bg" aria-hidden="true">
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+  <div class="grid"></div>
+  <canvas id="stars"></canvas>
+</div>
+
+<div class="page">
+  <h1>Donation leaderboard</h1>
+  <div class="sub">Thanks to everyone who supports the stream ❤️</div>
+
+  <div class="switch" id="kinds">
+    <button data-kind="robux">Robux</button>
+    <button data-kind="money">Money</button>
+  </div>
+  <div class="periods" id="periods">
+    <button data-period="today">Today</button>
+    <button data-period="week">This week</button>
+    <button data-period="month">This month</button>
+    <button data-period="alltime">All time</button>
+  </div>
+
+  <div class="raised" id="raisedBox">
+    <div class="label" id="raisedLabel">Raised</div>
+    <div class="big" id="raised">–</div>
+  </div>
+
+  <input class="search" id="search" type="search" placeholder="Find your name" autocomplete="off">
+  <div class="list" id="list"><div class="empty">Loading…</div></div>
+  <div class="foot"><span id="updated"></span> Weeks start on Monday.</div>
+</div>
+
+<audio id="bgm" src="music.mp3" loop preload="auto"></audio>
+<div class="music" id="music" hidden>
+  <button id="musicBtn" aria-label="Play or pause music"></button>
+  <div class="bars" aria-hidden="true"><i></i><i></i><i></i></div>
+  <input id="vol" type="range" min="0" max="1" step="0.01" value="0.35" aria-label="Music volume">
+</div>
+
+<script>
+  const PERIOD_NAMES = { today: 'today', week: 'this week', month: 'this month', alltime: 'all time' };
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const money = n => '$' + (n >= 100 ? Math.round(n).toLocaleString('en-US') : n.toFixed(2).replace(/\.00$/, ''));
+  const robux = n => 'R$ ' + Math.round(n).toLocaleString('en-US');
+
+  let [kind, period] = (location.hash.slice(1) || 'robux-alltime').split('-');
+  if (!['robux', 'money'].includes(kind)) kind = 'robux';
+  if (!PERIOD_NAMES[period]) period = 'alltime';
+  let data = null;
+
+  function periodStart(p, tz) {
+    if (p === 'alltime') return 0;
+    try {
+      const fmt = new Intl.DateTimeFormat('en-US', { timeZone: tz, year: 'numeric', month: 'numeric', day: 'numeric',
+        hour: 'numeric', minute: 'numeric', second: 'numeric', hourCycle: 'h23', weekday: 'short' });
+      const parts = t => Object.fromEntries(fmt.formatToParts(t).map(x => [x.type, x.value]));
+      const offset = t => { const q = parts(t); return Date.UTC(+q.year, +q.month - 1, +q.day, +q.hour, +q.minute, +q.second) - Math.floor(t / 1000) * 1000; };
+      const now = parts(Date.now());
+      let day = +now.day;
+      if (p === 'week') day -= ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(now.weekday);
+      if (p === 'month') day = 1;
+      const wall = Date.UTC(+now.year, +now.month - 1, day);
+      return wall - offset(wall - offset(wall));
+    } catch {
+      const d = new Date(); d.setHours(0, 0, 0, 0);
+      if (p === 'week') d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+      if (p === 'month') d.setDate(1);
+      return d.getTime();
+    }
+  }
+
+  function board(k, p) {
+    const since = periodStart(p, data.tz), totals = new Map();
+    let raised = 0;
+    for (const d of data.donations) {
+      if (d.ts < since || (k === 'robux') !== (d.unit === 'robux')) continue;
+      const v = k === 'robux' ? d.amount : d.usd;
+      raised += v;
+      if (d.hidden) continue;
+      const key = d.uid || d.user.toLowerCase();
+      const t = totals.get(key) || { user: d.user, deleted: !!d.uid, v: 0 };
+      t.v += v;
+      totals.set(key, t);
+    }
+    const list = [...totals.values()].sort((a, b) => b.v - a.v).slice(0, 100).map((u, i) => ({ ...u, rank: i + 1 }));
+    return { list, raised };
+  }
+
+  function avatar(u) {
+    const url = !u.deleted && data.avatars && data.avatars[u.user.toLowerCase()];
+    const first = u.deleted ? '?' : esc((Array.from(u.user)[0] || '?').toUpperCase());
+    const letter = `<span class="av letter">${first}</span>`;
+    return url ? `<img class="av" src="${esc(url)}" alt="" loading="lazy" onerror="this.outerHTML='${letter.replace(/"/g, '&quot;')}'">` : letter;
+  }
+
+  function ago(ts) {
+    const m = Math.round((Date.now() - ts) / 60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return `${m} min ago`;
+    const h = Math.round(m / 60);
+    return h < 24 ? `${h} hour${h > 1 ? 's' : ''} ago` : new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }
+
+  function render() {
+    document.querySelectorAll('#kinds button').forEach(b => b.classList.toggle('on', b.dataset.kind === kind));
+    document.querySelectorAll('#periods button').forEach(b => b.classList.toggle('on', b.dataset.period === period));
+    if (!data) return;
+    const { list: all, raised } = board(kind, period);
+    const fmt = kind === 'robux' ? robux : money;
+    document.getElementById('raisedLabel').textContent = `${kind === 'robux' ? 'Robux' : 'Money'} raised ${PERIOD_NAMES[period]}`;
+    document.getElementById('raised').textContent = fmt(raised);
+    document.getElementById('updated').textContent = `Last updated ${ago(data.updated)}.`;
+
+    const q = document.getElementById('search').value.trim().toLowerCase();
+    const list = q ? all.filter(u => u.user.toLowerCase().includes(q)) : all;
+    document.getElementById('list').innerHTML = list.length ? list.map(u => `
+      <div class="row ${u.rank <= 5 ? 'r' + u.rank : ''} ${u.rank <= 3 ? 'top' : ''}">
+        ${u.rank <= 3 ? `<span class="rank"><span class="medal">${u.rank}</span></span>` : `<span class="rank">${u.rank}</span>`}
+        ${kind === 'robux' ? avatar(u) : ''}
+        <span class="name ${u.user === 'deleted' ? 'deleted' : ''}">${esc(u.user)}</span>
+        <span class="amt ${kind === 'robux' ? 'robux' : ''}">${fmt(u.v)}</span>
+      </div>`).join('')
+      : `<div class="empty">${q ? 'No one by that name on this list.' : `No ${kind === 'robux' ? 'Robux' : 'money'} donations ${PERIOD_NAMES[period]} yet. Be the first!`}</div>`;
+  }
+
+  document.getElementById('kinds').onclick = e => { const b = e.target.closest('button'); if (b) { kind = b.dataset.kind; go(); } };
+  document.getElementById('periods').onclick = e => { const b = e.target.closest('button'); if (b) { period = b.dataset.period; go(); } };
+  document.getElementById('search').oninput = render;
+  function go() { history.replaceState(null, '', '#' + kind + '-' + period); render(); }
+
+  async function load() {
+    try {
+      const r = await fetch('data.json?t=' + Date.now(), { cache: 'no-store' });
+      if (r.ok) { data = await r.json(); render(); }
+    } catch { /* keep the last list */ }
+    if (!data) document.getElementById('list').innerHTML = '<div class="empty">Couldn’t load the leaderboard. Try refreshing in a minute.</div>';
+  }
+  render();
+  load();
+  setInterval(load, 60000);
+  setInterval(render, 60000);
+
+  /* ---------- Background music ---------- */
+  (() => {
+    const audio = document.getElementById('bgm'), box = document.getElementById('music'),
+          btn = document.getElementById('musicBtn'), vol = document.getElementById('vol');
+    const PLAY = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+    const PAUSE = '<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>';
+    let wantsMuted = false;
+    try { wantsMuted = localStorage.getItem('bgm-paused') === '1'; const v = localStorage.getItem('bgm-vol'); if (v !== null) vol.value = v; } catch {}
+    audio.volume = +vol.value;
+    const ui = () => { const on = !audio.paused; box.classList.toggle('playing', on); btn.innerHTML = on ? PAUSE : PLAY; };
+    audio.addEventListener('play', ui); audio.addEventListener('pause', ui);
+    audio.addEventListener('loadedmetadata', () => { box.hidden = false; ui(); });
+    audio.addEventListener('error', () => { box.hidden = true; }); // no music.mp3 found: hide the control
+
+    btn.onclick = () => {
+      if (audio.paused) { audio.play().catch(() => {}); try { localStorage.setItem('bgm-paused', '0'); } catch {} }
+      else { audio.pause(); try { localStorage.setItem('bgm-paused', '1'); } catch {} }
+    };
+    vol.oninput = () => { audio.volume = +vol.value; try { localStorage.setItem('bgm-vol', vol.value); } catch {} };
+
+    // Browsers block autoplay with sound, so try now, then start on the first click/tap/key.
+    if (!wantsMuted) {
+      audio.play().catch(() => {
+        const start = () => { audio.play().catch(() => {}); ['pointerdown', 'keydown', 'touchstart'].forEach(e => removeEventListener(e, start)); };
+        ['pointerdown', 'keydown', 'touchstart'].forEach(e => addEventListener(e, start, { once: true }));
+      });
+    }
+    ui();
+  })();
+
+  /* ---------- Twinkling stars ---------- */
+  (() => {
+    const c = document.getElementById('stars'), ctx = c.getContext('2d');
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let w, h, stars = [];
+    function size() {
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      w = c.width = innerWidth * dpr; h = c.height = innerHeight * dpr;
+      stars = Array.from({ length: Math.round(innerWidth * innerHeight / 14000) }, () => ({
+        x: Math.random() * w, y: Math.random() * h, r: (Math.random() * 1.3 + .4) * dpr,
+        s: Math.random() * .6 + .2, p: Math.random() * 6.28, v: Math.random() * .0008 + .0003 }));
+    }
+    function tick(t) {
+      ctx.clearRect(0, 0, w, h);
+      for (const s of stars) {
+        const a = .35 + .65 * Math.abs(Math.sin(s.p + t * s.v * 4));
+        ctx.globalAlpha = a * .8; ctx.fillStyle = '#e9d5ff';
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.283); ctx.fill();
+        s.y -= s.s * .12; if (s.y < -4) { s.y = h + 4; s.x = Math.random() * w; }
+      }
+      requestAnimationFrame(tick);
+    }
+    size(); addEventListener('resize', size); requestAnimationFrame(tick);
+  })();
+</script>
+</body>
+</html>
